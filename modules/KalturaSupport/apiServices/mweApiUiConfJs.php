@@ -16,6 +16,8 @@ class mweApiUiConfJs {
 	var $jsConfigCheckDone = false;
 	var $lastFileModTime = 0;
 
+	var $shouldIgnoreOnPageCaching = false;
+
 	function __construct() {
 		global $container;
 		$this->request = $container['request_helper'];
@@ -32,7 +34,7 @@ class mweApiUiConfJs {
 		// add any on-page javascript
 		$this->sendHeaders();
 		// check if we should minify:
-		if( !$wgEnableScriptDebug ){
+		if( !($wgEnableScriptDebug || $this->shouldIgnoreOnPageCaching)){
 			// ob_gzhandler automatically checks for browser gzip support and gzips
 			if(!ob_start("ob_gzhandler")) ob_start();
 			// output the cached min version:
@@ -142,7 +144,10 @@ class mweApiUiConfJs {
 		foreach( $cssSet as $cssFile ){
 			$o.='kWidget.appendCssUrl(\'' . $this->utility->getExternalResourceUrl( $cssFile ) . "');\n";
 		}
-		
+
+		//Flag indication if file was loaded from local
+        $fileLoadedFromLocal = false;
+
 		// Always Output the mwEmbedLoader javascript inline ( if possible ) to be minified and gziped above )
 		foreach( $scriptSet as $inx => $filePath ){
 			$fullPath = $this->resolvePath( $filePath );
@@ -168,8 +173,13 @@ class mweApiUiConfJs {
 					$this->lastFileModTime = filemtime( $fullPath );
 				}
 				unset( $scriptSet[ $inx] );
+				$fileLoadedFromLocal = true;
 			}
 		}
+
+		//If no file loaded from local then set flag to indicate no minification is needed!
+        $this->shouldIgnoreOnPageCaching = !$fileLoadedFromLocal;
+
 		// output the remaining assets via appendScriptUrls
 		$o.= "\n" . 'kWidget.appendScriptUrls( [';
 		$coma = '';
