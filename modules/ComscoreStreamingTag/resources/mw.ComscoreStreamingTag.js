@@ -6,7 +6,7 @@
 
 	mw.ComscoreStreamingTag.prototype = {
 
-		pluginVersion: "1.0.3",
+		pluginVersion: "1.0.5",
 		reportingPluginName: "kaltura",
 		playerVersion: mw.getConfig('version'),
 		genericPluginUrlSecure: "https://sb.scorecardresearch.com/c2/plugins/streamingtag_plugin_generic.js",
@@ -19,7 +19,7 @@
 		streamSenseInstance: null, // Placeholder reference for comScore Generic plugin
 
 		clipNumberMap: {},
-	    clipNumberCounter: 0,
+		clipNumberCounter: 0,
 		playerEvents: null,
 		inFullScreen: false,
 		currentPlayerPluginState: null, // Keep track of the comScore pluguin state
@@ -33,7 +33,8 @@
 		buffering: false,
 		seeking: false,
 		playing: false,
-		lastKnownwPercentage: 0,
+		lastKnownCurrentPosition: 0,
+		lastState: "pause",
 		// Mapping for the module settings and the StreamSense plugin
 		configOptions: {c2:"c2", pageView:"pageview", logUrl:"logurl", persistentLabels:"persistentlabels", debug:"debug"},
 
@@ -123,9 +124,9 @@
 
 		onPlay: function() {
 			if (this.playing
-				&& !this.buffering
+					/*&& !this.buffering*/ // We can not rely on the buffering event. See TAG-2035
 				&& !this.seeking
-			    && this.getPlayerPluginState() != this.PlayerPluginState().PLAYING
+				&& this.getPlayerPluginState() != this.PlayerPluginState().PLAYING
 				&& this.getPlayerPluginState()!= this.PlayerPluginState().AD_PLAYING) {
 				this.setClip();
 				var seek = this.getPlayerPluginState() == this.PlayerPluginState().SEEKING;
@@ -201,19 +202,26 @@
 				_this.buffering = false;
 			});
 
-			embedPlayer.bindHelper( 'updatePlayHeadPercent' + _this.bindPostfix, function(){
-				var args = $.makeArray( arguments );
-				var percent = args[1];
-				if (percent != _this.lastKnownwPercentage && !_this.seeking && !_this.buffering) {
-					if (percent > _this.lastKnownwPercentage) {
+			embedPlayer.bindHelper( 'timeupdate' + _this.bindPostfix, function(){
+				var state = _this.lastState;
+				var currentPosition = _this.getCurrentPosition();
+				// We can not rely on the buffering event. See TAG-2035
+				if (currentPosition != _this.lastKnownCurrentPosition && !_this.seeking /*&& !_this.buffering*/) {
+					if (currentPosition > _this.lastKnownCurrentPosition) {
 						_this.onPlay();
+						state = "play";
 					} else {
 						_this.onPause();
+						state = "pause";
 					}
 				} else {
 					_this.onPause();
+					state = "pause";
 				}
-				_this.lastKnownwPercentage = percent;
+				if (_this.lastState != state) {
+					console.log(_this.lastState  + " --> " + state + "      " + _this.lastKnownCurrentPosition + " --> " + currentPosition);
+				}
+				_this.lastKnownCurrentPosition = currentPosition;
 			});
 
 			embedPlayer.bindHelper( 'onChangeMedia' + _this.bindPostfix, function(){
@@ -331,24 +339,24 @@
 			if (playlist) {
 				labels.ns_st_pl = playlist.name; // Playlist title set to player playlist's name.
 				/*
-				// We cannot include playlist length - in number of items as well as an amount of time - because the
-				// player does not have any info about the number of ads and their length.
+				 // We cannot include playlist length - in number of items as well as an amount of time - because the
+				 // player does not have any info about the number of ads and their length.
 
-				labels.ns_st_cp = playlist.length;
+				 labels.ns_st_cp = playlist.length;
 
-				var totVidLength = 0;
-				for (var i = 0; i < playlist.items.length; i++) {
-					totVidLength += playlist.items[i].duration * 1000;
-				}
-				labels.ns_st_ca = totVidLength; // total playlist length
-				*/
+				 var totVidLength = 0;
+				 for (var i = 0; i < playlist.items.length; i++) {
+				 totVidLength += playlist.items[i].duration * 1000;
+				 }
+				 labels.ns_st_ca = totVidLength; // total playlist length
+				 */
 			} else {
 				/*
-				// We cannot include playlist length as amount of time because the player does not have any info about
-				// the number of ads and their length.
+				 // We cannot include playlist length as amount of time because the player does not have any info about
+				 // the number of ads and their length.
 
-				labels.ns_st_ca = this.getDuration();
-				*/
+				 labels.ns_st_ca = this.getDuration();
+				 */
 				labels.ns_st_pl = this.getMediaName(); // Playlist title set to content media title.
 			}
 			return labels;
@@ -425,9 +433,9 @@
 			// Split and trim the spaces
 			rawConfig.split(/ *, */g).forEach(function(x) {
 				// Create two groups, one for the label name and the second one for the label value without any "
-				var re = /([^=]+)="?([^"]+)"?/g;
+				var re = /([^=]+)="?([^"]*)"?/g;
 				var arr = re.exec(x);
-				arr[2] && (result[arr[1]] = _this.evaluateString(arr[2]));
+				(arr.length == 3) && (result[arr[1]] = _this.evaluateString(arr[2]));
 			});
 			return result;
 		},
@@ -437,7 +445,7 @@
 			// Match all the elements inside {}
 			var re = /{[^}]+}/g;
 			var result = str.replace(re, function(match, p1, p2) {
-				return _this.embedPlayer.evaluate(p1)
+				return _this.embedPlayer.evaluate(match)
 			});
 			return result;
 		},
