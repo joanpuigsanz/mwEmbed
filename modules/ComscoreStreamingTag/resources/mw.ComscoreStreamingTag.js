@@ -19,7 +19,7 @@
 		streamSenseInstance: null, // Placeholder reference for comScore Generic plugin
 
 		clipNumberMap: {},
-		clipNumberCounter: 0,
+	    clipNumberCounter: 0,
 		playerEvents: null,
 		inFullScreen: false,
 		currentPlayerPluginState: null, // Keep track of the comScore pluguin state
@@ -124,9 +124,9 @@
 
 		onPlay: function() {
 			if (this.playing
-					/*&& !this.buffering*/ // We can not rely on the buffering event. See TAG-2035
+				/*&& !this.buffering*/ // We can not rely on the buffering event. See TAG-2035
 				&& !this.seeking
-				&& this.getPlayerPluginState() != this.PlayerPluginState().PLAYING
+			    && this.getPlayerPluginState() != this.PlayerPluginState().PLAYING
 				&& this.getPlayerPluginState()!= this.PlayerPluginState().AD_PLAYING) {
 				this.setClip();
 				var seek = this.getPlayerPluginState() == this.PlayerPluginState().SEEKING;
@@ -339,24 +339,24 @@
 			if (playlist) {
 				labels.ns_st_pl = playlist.name; // Playlist title set to player playlist's name.
 				/*
-				 // We cannot include playlist length - in number of items as well as an amount of time - because the
-				 // player does not have any info about the number of ads and their length.
+				// We cannot include playlist length - in number of items as well as an amount of time - because the
+				// player does not have any info about the number of ads and their length.
 
-				 labels.ns_st_cp = playlist.length;
+				labels.ns_st_cp = playlist.length;
 
-				 var totVidLength = 0;
-				 for (var i = 0; i < playlist.items.length; i++) {
-				 totVidLength += playlist.items[i].duration * 1000;
-				 }
-				 labels.ns_st_ca = totVidLength; // total playlist length
-				 */
+				var totVidLength = 0;
+				for (var i = 0; i < playlist.items.length; i++) {
+					totVidLength += playlist.items[i].duration * 1000;
+				}
+				labels.ns_st_ca = totVidLength; // total playlist length
+				*/
 			} else {
 				/*
-				 // We cannot include playlist length as amount of time because the player does not have any info about
-				 // the number of ads and their length.
+				// We cannot include playlist length as amount of time because the player does not have any info about
+				// the number of ads and their length.
 
-				 labels.ns_st_ca = this.getDuration();
-				 */
+				labels.ns_st_ca = this.getDuration();
+				*/
 				labels.ns_st_pl = this.getMediaName(); // Playlist title set to content media title.
 			}
 			return labels;
